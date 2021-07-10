@@ -17,12 +17,16 @@ namespace WorkflowCore.Persistence.MongoDB.Services
 {
     public class MongoPersistenceProvider : IPersistenceProvider
     {
-        internal const string WorkflowCollectionName = "wfc.workflows";
+        internal string SubscriptionsCollectionName = "wfc.subscriptions";
+        internal string EventsCollectionName = "wfc.events";
+        internal string ExecutionErrorsCollectionName = "wfc.execution_errors";
+        internal string WorkflowCollectionName = "wfc.workflows";
         private readonly IMongoDatabase _database;
 
-        public MongoPersistenceProvider(IMongoDatabase database)
+        public MongoPersistenceProvider(IMongoDatabase database, string collectionNamePrefix = default)
         {
             _database = database;
+            SetCollectionNames(collectionNamePrefix);
             CreateIndexes(this);
         }
 
@@ -117,11 +121,11 @@ namespace WorkflowCore.Persistence.MongoDB.Services
 
         private IMongoCollection<WorkflowInstance> WorkflowInstances => _database.GetCollection<WorkflowInstance>(WorkflowCollectionName);
 
-        private IMongoCollection<EventSubscription> EventSubscriptions => _database.GetCollection<EventSubscription>("wfc.subscriptions");
+        private IMongoCollection<EventSubscription> EventSubscriptions => _database.GetCollection<EventSubscription>(SubscriptionsCollectionName);
 
-        private IMongoCollection<Event> Events => _database.GetCollection<Event>("wfc.events");
+        private IMongoCollection<Event> Events => _database.GetCollection<Event>(EventsCollectionName);
 
-        private IMongoCollection<ExecutionError> ExecutionErrors => _database.GetCollection<ExecutionError>("wfc.execution_errors");
+        private IMongoCollection<ExecutionError> ExecutionErrors => _database.GetCollection<ExecutionError>(ExecutionErrorsCollectionName);
 
         public async Task<string> CreateNewWorkflow(WorkflowInstance workflow, CancellationToken cancellationToken = default)
         {
@@ -290,6 +294,17 @@ namespace WorkflowCore.Persistence.MongoDB.Services
         {
             if (errors.Any())
                 await ExecutionErrors.InsertManyAsync(errors, cancellationToken: cancellationToken);
+        }
+
+        private void SetCollectionNames(string collectionNamePrefix)
+        {
+            if (!string.IsNullOrWhiteSpace(collectionNamePrefix))
+            {
+                WorkflowCollectionName = WorkflowCollectionName.Replace("wfc.", collectionNamePrefix);
+                EventsCollectionName = EventsCollectionName.Replace("wfc.", collectionNamePrefix);
+                SubscriptionsCollectionName = SubscriptionsCollectionName.Replace("wfc.", collectionNamePrefix);
+                ExecutionErrorsCollectionName = ExecutionErrorsCollectionName.Replace("wfc.", collectionNamePrefix);
+            }
         }
     }
 }
